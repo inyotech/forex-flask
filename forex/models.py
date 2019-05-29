@@ -39,11 +39,14 @@ class Rate(db.Model):
 
 class CurrencySchema(Schema):
     class Meta:
-        fields = ('currency_name', 'short_name', 'currency_code', 'country_name')
+        fields = ('currency_name', 'short_name', 'currency_code', 'country_name', 'flag_image_file_name')
+
+class CurrencyRateSchema(Schema):
+    class Meta:
+        fields = ('currency_name', 'short_name', 'currency_code', 'country_name',
+                  'flag_image_file_name', 'rate', 'rate_date')
 
 class RateSchema(Schema):
-    rate = fields.Number()
-
     class Meta:
         fields = ('rate_date', 'rate')
 
@@ -52,13 +55,17 @@ class RateHistorySchema(Schema):
     target = fields.Nested(CurrencySchema)
     rate_history = fields.Nested(RateSchema, many=True)
 
-class LatestRateSchema(Schema):
+class LatestRateSchema2(Schema):
     rate = fields.Number()
     class Meta:
         fields = (
             'country_name', 'short_name', 'flag_image_file_name',
             'currency_name', 'currency_code', 'rate_date', 'rate'
         )
+
+class LatestRateSchema(Schema):
+    base = fields.Nested(CurrencySchema)
+    latest_rates = fields.Nested(CurrencyRateSchema, many=True)
 
 # subqueries
 
@@ -79,11 +86,16 @@ def get_currency(code):
         Currency
     ).filter(Currency.currency_code==code).one()
 
+def get_all_currencies():
+    return db.session.query(
+        Currency
+    ).order_by(Currency.country_name)
+
 def get_rate_history(target, base='USD', start=None, end=None):
-    
+
     if end is None:
         end = datetime.datetime.now()
-    
+
     if start is None:
         start = end - dateutil.relativedelta.relativedelta(months=24)
 
@@ -104,7 +116,7 @@ def get_rate_history(target, base='USD', start=None, end=None):
     return rate_history.all()
 
 
-def get_latest_rates(target_rate='EUR', base_rate='USD'):
+def get_latest_rates(base_currency='EUR'):
 
     base_rate = db.aliased(Rate, name='base_rate')
     target_rate = db.aliased(Rate, name='target_rate')
@@ -122,8 +134,8 @@ def get_latest_rates(target_rate='EUR', base_rate='USD'):
     ).join(
         Currency, Currency.currency_id==target_rate.currency_id
     ).filter(
-        base_rate.currency_id==currency_id_subq('USD'),
+        base_rate.currency_id==currency_id_subq(base_currency),
         target_rate.rate_date==latest_date_subq(),
     ).order_by(Currency.country_name)
-    
+
     return latest_rates.all()

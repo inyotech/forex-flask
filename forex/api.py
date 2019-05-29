@@ -4,7 +4,7 @@ import datetime, dateutil
 from flask import Blueprint, request, jsonify, make_response
 from forex.models import (
     Currency, CurrencySchema, LatestRateSchema, RateHistorySchema, 
-    get_currency, get_latest_rates, get_rate_history
+    get_currency, get_all_currencies, get_latest_rates, get_rate_history
 )
 
 api = Blueprint('api', __name__, url_prefix='/api')
@@ -15,19 +15,23 @@ def index():
     return "api endpoint"
 
 
-@api.route('/currencies')
+@api.route('/currencies', methods=['GET'])
 def currencies():
-    currencies = Currency.query.all()
+    currencies = get_all_currencies()
     currencies_schema = CurrencySchema(many=True)
     result = currencies_schema.dump(currencies)
     return jsonify({'data': result.data})
 
 
-@api.route('/latest_rates', methods=['GET'])
-def latest_rates():
-    latest_rates = get_latest_rates()
-    latest_rates_schema = LatestRateSchema(many=True)
-    result = latest_rates_schema.dump(latest_rates)
+@api.route('/latest_rates/base/<base>', methods=['GET'])
+def latest_rates(base='EUR'):
+    data = {
+        'base': get_currency(base),
+        'latest_rates': get_latest_rates(base)
+    }
+
+    latest_rates_schema = LatestRateSchema()
+    result = latest_rates_schema.dump(data)
     return jsonify({'data': result.data})
 
 @api.route('/rate_history/base/<base>/target/<target>/months/<int:months>', methods=['GET'])
@@ -83,6 +87,7 @@ def form_csv_response(response_data):
     buffer.seek(0)
 
     response = make_response(buffer.getvalue())
-    response.headers['Content-type'] = 'text/csv'
+    response.headers['Content-Type'] = 'application/csv'
+    response.headers['Content-Disposition'] = 'attachment; filename=latest_rates.csv'
 
     return response
