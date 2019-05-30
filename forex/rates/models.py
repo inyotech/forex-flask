@@ -10,13 +10,13 @@ class Currency(db.Model):
 
     __tablename__ = 'currencies'
 
-    currency_id          = db.Column(db.Integer, primary_key=True)
-    h10_id               = db.Column(db.String(25), unique=True)
-    country_name         = db.Column(db.String(25))
-    short_name           = db.Column(db.String(10))
-    flag_image_file_name = db.Column(db.String(64))
-    currency_name        = db.Column(db.String(20))
-    currency_code        = db.Column(db.String(3))
+    currency_id          = db.Column(db.Integer, autoincrement=True, primary_key=True)
+    h10_id               = db.Column(db.String(25), nullable=False, unique=True)
+    country_name         = db.Column(db.String(25), nullable=False)
+    short_name           = db.Column(db.String(10), nullable=False)
+    flag_image_file_name = db.Column(db.String(64), nullable=False)
+    currency_name        = db.Column(db.String(20), nullable=False)
+    currency_code        = db.Column(db.String(3), nullable=False)
     rates                = db.relationship('Rate', back_populates='currency')
 
     def __repr__(self):
@@ -28,11 +28,14 @@ class Currency(db.Model):
 class Rate(db.Model):
 
     __tablename__ = 'exchange_rates'
+    __table_args__ = (
+        db.UniqueConstraint('currency_id', 'rate_date'),
+    )
 
-    rate_id     = db.Column(db.Integer, primary_key=True)
-    currency_id = db.Column(db.Integer, db.ForeignKey('currencies.currency_id'))
-    rate_date   = db.Column(db.Date)
-    per_dollar  = db.Column(db.Float)
+    rate_id     = db.Column(db.Integer, autoincrement=True, primary_key=True)
+    currency_id = db.Column(db.Integer, db.ForeignKey('currencies.currency_id'), nullable=False)
+    rate_date   = db.Column(db.Date, nullable=False)
+    per_dollar  = db.Column(db.Float, nullable=False)
     currency    = db.relationship('Currency', back_populates='rates')
 
 # serialization classes
@@ -55,13 +58,6 @@ class RateHistorySchema(Schema):
     target = fields.Nested(CurrencySchema)
     rate_history = fields.Nested(RateSchema, many=True)
 
-class LatestRateSchema2(Schema):
-    rate = fields.Number()
-    class Meta:
-        fields = (
-            'country_name', 'short_name', 'flag_image_file_name',
-            'currency_name', 'currency_code', 'rate_date', 'rate'
-        )
 
 class LatestRateSchema(Schema):
     base = fields.Nested(CurrencySchema)

@@ -1,6 +1,10 @@
+import click
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from forex import commands
+
 
 db = SQLAlchemy()
 cors = CORS()
@@ -13,12 +17,15 @@ def create_app():
     db.init_app(app)
     cors.init_app(app)
 
-    @app.route("/hello")
-    def hello():
-        return "Hello, World!"
+    from forex.rates.views import rates
+    from forex.stories.views import stories
 
-    from forex.api import api
+    app.register_blueprint(rates)
+    app.register_blueprint(stories)
 
-    app.register_blueprint(api)
+    app.cli.add_command(commands.test)
+    app.cli.add_command(commands.init_db)
+    app.cli.add_command(commands.load_currencies)
+    app.cli.add_command(commands.load_rates)
 
     return app
