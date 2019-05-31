@@ -63,13 +63,21 @@ def load_rates(start_date, end_date):
     for currency in all_currencies:
         currency_map[currency.h10_id] = currency.currency_id
 
+    import pprint
     for rate in downloader.iterate_rates():
-        print(rate)
-        currency_id = currency_map[rate['h10_id']]
-        rate = Rate(currency_id=currency_id, per_dollar=rate['per_dollar'], rate_date=rate['rate_date'])
-        session.add(rate)
+        try:
+            print(rate, end=' ')
+            currency_id = currency_map[rate['h10_id']]
+            rate = Rate(currency_id=currency_id, per_dollar=rate['per_dollar'], rate_date=rate['rate_date'])
+            session.add(rate)
+            session.commit()
+        except Exception as ex:
+            print('insert failed: {0}'.format(type(ex).__name__), end='')
+            session.rollback()
+        finally:
+            print()
 
-    session.commit()
+
 
 @click.command(help='Download and load financial stories from rss feeds')
 @click.option('--expire-days', type=int, help='Expiration threshold in days (default 10)')
