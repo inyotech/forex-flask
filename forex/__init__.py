@@ -27,5 +27,6 @@ def create_app():
     app.cli.add_command(commands.init_db)
     app.cli.add_command(commands.load_currencies)
     app.cli.add_command(commands.load_rates)
+    app.cli.add_command(commands.load_stories)
 
     return app

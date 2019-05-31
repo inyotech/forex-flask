@@ -1,5 +1,10 @@
+import csv
+import datetime
+import time
+
 import click
 from flask.cli import with_appcontext
+
 
 @click.command()
 def test():
@@ -8,15 +13,11 @@ def test():
 @click.command(help='Initialize db')
 @with_appcontext
 def init_db():
-    from forex import db
     db.create_all()
 
 @click.command(help='Load all currency data')
 @with_appcontext
 def load_currencies():
-    import csv
-    from forex import db
-    from forex.rates.models import Currency
 
     with open('currencies.csv') as f:
 
@@ -35,10 +36,9 @@ def load_currencies():
 @click.option('--end-date', type=click.DateTime(formats=['%Y-%m-%d']), help='Ending date (default now)')
 @with_appcontext
 def load_rates(start_date, end_date):
-    import datetime
     from forex import db
+    from forex.rates.models import Currency
     from forex.rates.rate_downloader import Downloader
-    from forex.rates.models import Currency, Rate
 
     if not end_date:
         end_date = datetime.datetime.now()
@@ -66,3 +66,59 @@ def load_rates(start_date, end_date):
         session.add(rate)
 
     session.commit()
+
+@click.command(help='Download and load financial stories from rss feeds')
+@click.option('--expire-days', type=int, help='Expiration threshold in days (default 10)')
+@with_appcontext
+def load_stories(expire_days):
+    from forex import db
+    from forex.stories.models import Story
+    from forex.stories.story_downloader import Downloader
+
+    if not expire_days:
+        expire_days = 10
+
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    keep_threshold = now - datetime.timedelta(days=expire_days)
+
+    downloader = Downloader()
+
+    session = db.session()
+
+    for story in downloader.iterate_stories():
+
+        published_at = datetime.datetime.fromtimestamp(
+            time.mktime(story.published_parsed),
+            datetime.timezone.utc
+        )
+
+        exists = session.query(
+            Story.query.filter(
+                Story.title==story.title,
+                Story.link==story.link,
+                Story.feed_url==story.feed_url
+            ).exists()).scalar()
+
+        if exists:
+            print(format('story {0} exists'.format(story.title)))
+            continue
+
+        story = Story(
+            title=story.title,
+            link=story.link,
+            feed_url=story.feed_url,
+            description=story.summary,
+            published_date=published_at,
+            created_date=now
+        )
+
+        print(format('saving story {0}'.format(story.title)))
+        session.add(story)
+
+    if session.new:
+        session.commit()
+
+    session.query(Story).filter(
+        Story.published_date<keep_threshold
+    ).delete()
+
