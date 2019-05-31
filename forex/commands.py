@@ -13,11 +13,15 @@ def test():
 @click.command(help='Initialize db')
 @with_appcontext
 def init_db():
+    from forex import db
+
     db.create_all()
 
 @click.command(help='Load all currency data')
 @with_appcontext
 def load_currencies():
+    from forex import db
+    from forex.rates.models import Currency
 
     with open('currencies.csv') as f:
 
@@ -37,7 +41,7 @@ def load_currencies():
 @with_appcontext
 def load_rates(start_date, end_date):
     from forex import db
-    from forex.rates.models import Currency
+    from forex.rates.models import Currency, Rate
     from forex.rates.rate_downloader import Downloader
 
     if not end_date:
@@ -78,7 +82,7 @@ def load_stories(expire_days):
     if not expire_days:
         expire_days = 10
 
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    now = datetime.datetime.now()
     keep_threshold = now - datetime.timedelta(days=expire_days)
 
     downloader = Downloader()
@@ -121,4 +125,6 @@ def load_stories(expire_days):
     session.query(Story).filter(
         Story.published_date<keep_threshold
     ).delete()
+
+    session.commit()
 
