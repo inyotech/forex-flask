@@ -1,0 +1,13 @@
+[Unit]
+Description=API endpoint for foreign exchange rates
+Documentation=http://github.com/inyotech/forex-flask
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/inyotech/webapps/forex-flask
+ExecStart=/home/inyotech/webapps/forex-flask/venv/bin/uwsgi --uwsgi-socket 127.0.0.1:5000 --mount /=run:app 
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

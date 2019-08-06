@@ -1,0 +1,5 @@
+DAILY_LOAD=/home/inyotech/webapps/forex-flask/bin/download_latest.sh
+
+# min	hr	day	mon	week	command
+0       */6     *       *       *       $DAILY_LOAD 2>&1 | /usr/bin/logger -t daily_load
+
